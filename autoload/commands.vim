@@ -70,7 +70,28 @@ endfunction
 " Remove comment line
 "-------------------------------------------------------
 function! commands#remove_comment_line() abort
-	execute 'Cfilter! /\/\/\(.*\)\|\/\*\(.*\)\*\//'
+	let bufs = filter(range(1, bufnr('$')), '
+			\ buflisted(v:val)
+			\ && getbufvar(v:val, "&buftype") == "quickfix"
+			\ ')
+
+	" Quickfixが開いてない場合は終了
+	if !len(bufs) || bufwinnr(bufs[0]) <= 0
+		echohl WarningMsg | echomsg 'Unopend quickfix' | echohl None
+		return
+	endif
+
+	" Quickfixに移動
+	exe bufwinnr(bufs[0]) . 'wincmd w'
+
+	" コメント記号の開始部分を入力
+	let cms = input('Comment string: ', '(//|/*)')
+	if empty(cms) | return | endif
+
+	" 記号をエスケープしてCfilter!を実行
+	let pattern = escape(trim(cms), '*/\^$.[]()|')
+	execute 'Cfilter! /^\s*' . pattern . '/'
+
 	set modifiable
 endfunction
 
