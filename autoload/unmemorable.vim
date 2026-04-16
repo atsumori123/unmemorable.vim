@@ -3,7 +3,7 @@ set cpoptions&vim
 
 function! s:init_menutree() abort
 	let s:menu_tree = {
-		\ 'Unmemory' : { 'id' : 100, 'menu' : [
+		\ 'Unmemorable' : { 'id' : 100, 'menu' : [
 		\		' - Filepath to clipboard',
 		\		' + Buffer',
 		\		' + Quickfix',
@@ -64,7 +64,7 @@ function! s:open_popup(name) abort
 			\ 'padding': [1,2,1,2],
 			\ 'minwidth':50,
 			\ 'mapping': v:false,
-			\ 'title': ' [ Unmemory ] ',
+			\ 'title': ' [ Unmemorable ] ',
 			\ 'callback': function('s:menu_handler'),
 			\ 'filter': function('s:menu_filter')
 			\ }
@@ -218,13 +218,13 @@ function! s:menu_handler(winid, result) abort
 endfunction
 
 "-------------------------------------------------------
-" Unmemory start
+" Unmemorable start
 "-------------------------------------------------------
-function! unmemory#start(range, start, end) abort
+function! unmemorable#start(range, start, end) abort
 	let s:menu_stack = []
 	let s:range = {'range':a:range, 'start':a:start, 'end':a:end}
 	call s:init_menutree()
-	call s:open_popup('Unmemory')
+	call s:open_popup('Unmemorable')
 endfunction
 
 let &cpoptions = s:save_cpo
