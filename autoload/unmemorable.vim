@@ -17,7 +17,8 @@ function! s:init_menutree() abort
 		\		' - Modifiable  ['.(&modifiable ? "+" : "-").']',
 		\		' - Read Only  ['.(&readonly ? 'RO' : 'RW').']',
 		\		' - Visualization control code  ['.(&list ? 'ON' : 'OFF').']',
-		\		' - Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']'
+		\		' - Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']',
+		\		' - OSC Yank ['.(exists("#OSCYank#TextYankPost") ? 'ON' : 'OFF').']'
 		\ ]},
 		\ 'Quickfix' : { 'id' : 300, 'menu' : [ 
 		\		' - Reset error format',
@@ -168,6 +169,9 @@ function! s:menu_handler(winid, result) abort
 
 	elseif a:result == 205	" Ignore case
 		execute &ignorecase ? 'set noignorecase' : 'set ignorecase'
+
+	elseif a:result == 206	" OSC Yank
+		call commands#osc_yank()
 
 	elseif a:result == 301	" Reset error format
 		call commands#reset_errorformat()

@@ -2,6 +2,25 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 "-------------------------------------------------------
+" OSC Yank
+"-------------------------------------------------------
+function! commands#osc_yank() abort
+	if exists("#OSCYank#TextYankPost")
+		augroup OSCYank
+			autocmd!
+		augroup END
+	else
+		augroup OSCYank
+			autocmd!
+			autocmd TextYankPost *
+				\ if v:event.operator is 'y' && v:event.regname is '' |
+				\ execute 'OSCYankRegister "' |
+				\ endif
+		augroup END
+	endif
+endfunction
+
+"-------------------------------------------------------
 " Space to Tab
 "-------------------------------------------------------
 function! commands#space2tab(range) abort
