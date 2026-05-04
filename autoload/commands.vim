@@ -114,6 +114,96 @@ function! commands#remove_comment_line() abort
 	set modifiable
 endfunction
 
+"-------------------------------------------------------
+" ファイルパスをクリップボードに設定
+"-------------------------------------------------------
+function! commands#filepath_to_clipboard(omit_num) abort
+	let separator = has('unix') ? '/' : '\\'
+	let parts = split(expand("%:p"), separator)
+	let @* = join(parts[a:omit_num:], separator)
+	echohl MoreMsg | echomsg '[To clipboard] '.@* | echohl None
+endfunction
+
+"-------------------------------------------------------
+" ファイルパスの省略数設定
+"-------------------------------------------------------
+function! commands#edit_omit_num() abort
+	let val = input('omit num : ')
+	if val !~# '^\d\+$' | let val = 0 | endif
+
+	let separator = has('unix') ? '/' : '\\'
+	let parts = split(expand("%:p"), separator)
+	let path = join(parts[val:], separator)
+
+	echohl MoreMsg | echomsg '[omit:' . val . '] '. path | echohl None
+	return 'let s:omit_num = ' . val
+endfunction
+
+"-------------------------------------------------------
+" タブ幅 4 / 8
+"-------------------------------------------------------
+function! commands#tab() abort
+	let tab = &tabstop == 4 ? 8 : 4
+	execute 'set tabstop='.tab
+	execute 'set shiftwidth='.tab
+endfunction
+
+"-------------------------------------------------------
+" 編集可 / 否
+"-------------------------------------------------------
+function! commands#modifiable() abort
+	execute &modifiable ? 'set nomodifiable' : 'set modifiable'
+endfunction
+
+"-------------------------------------------------------
+" Writable / Read Only
+"-------------------------------------------------------
+function! commands#rw() abort
+	execute &readonly ? 'set noro' : 'set ro'
+endfunction
+
+"-------------------------------------------------------
+" 空白/タブの表示 / 非表示
+"-------------------------------------------------------
+function! commands#visualization() abort
+	execute &list ? 'set nolist' : 'set list'
+endfunction
+
+"-------------------------------------------------------
+" 大文字 / 小文字の区別
+"-------------------------------------------------------
+function! commands#ignorecase() abort
+	execute &ignorecase ? 'set noignorecase' : 'set ignorecase'
+endfunction
+
+"-------------------------------------------------------
+" 指定のエンコードしてファイルを再オープン
+"-------------------------------------------------------
+function! commands#reopen_encord(type) abort
+	execute 'e ++enc=' . a:type
+endfunction
+
+"-------------------------------------------------------
+" 指定のエンコードに変換
+"-------------------------------------------------------
+function! commands#convert_encord(type) abort
+	execute 'set fenc=' . a:type
+endfunction
+
+"-------------------------------------------------------
+" 指定の改行コードでファイルを再オープン
+"-------------------------------------------------------
+function! commands#reopen_nl(type) abort
+	execute 'edit ++fileformat=' . a:type
+endfunction
+
+"-------------------------------------------------------
+" 指定の改行コードに変換
+"-------------------------------------------------------
+function! commands#convert_nl(type) abort
+	execute 'set fileformat=' . a:type
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
 
