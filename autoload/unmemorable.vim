@@ -8,7 +8,8 @@ let s:omit_num = 0
 " level:階層レベル, label:表示名, action:実行コマンド, child:子要素の有無
 function! s:make_menu_tree() abort
 	let s:menu_tree = [
-		\	{'level': 0, 'label': 'Filepath to clipboard (omit='.s:omit_num.')', 'action': function('commands#filepath_to_clipboard', [s:omit_num]), 'edit': function('commands#edit_omit_num')},
+		\	{'level': 0, 'label': 'Filepath to clipboard [omit='.s:omit_num.']', 'action': function('commands#filepath_to_clipboard', [s:omit_num]), 'edit': function('commands#edit_omit_num')},
+		\	{'level': 0, 'label': 'Auto Complete ['.(exists("#AutoComplete#InsertCharPre") ? 'ON' : 'OFF').']' , 'action' : function('commands#auto_complete')},
 		\	{'level': 0, 'label': 'Buffer', 'child': 1},
 		\		{'level': 1, 'label': 'Tab  ['.&tabstop.']', 'action': function('commands#tab')},
 		\		{'level': 1, 'label': 'Modifiable  ['.(&modifiable ? "+" : "-").']', 'action': function('commands#modifiable')},

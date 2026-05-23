@@ -204,6 +204,74 @@ function! commands#convert_nl(type) abort
 	execute 'set fileformat=' . a:type
 endfunction
 
+"-------------------------------------------------------
+" Auto Complete
+"-------------------------------------------------------
+function! commands#auto_complete() abort
+	if exists("#AutoComplete#InsertCharPre")
+		augroup AutoComplete
+			autocmd!
+		augroup END
+	else
+		" 補完動作の設定
+		" auto_cmp_startが何度も呼ばれないようにmenuoneでpumを表示
+		" 自動で選択までされないようnoselect
+		set completeopt=menuone,noselect
+
+		augroup AutoComplete
+			autocmd!
+			autocmd InsertCharPre * call s:debounce($'{expand("\<SID>")}auto_cmp_start', 0)
+			autocmd TextChangedP * call s:auto_cmp_close()
+		augroup END
+	endif
+endfunction
+
+let s:MINIMUM_COMPLETE_LENGTH = 3
+let s:debounce_timers = {}
+"-------------------------------------------------------
+" 補完の開始
+"-------------------------------------------------------
+function! s:auto_cmp_start() abort
+  " 既に補完ウィンドウが表示されている場合は何もせず終了
+	if pumvisible() | return | endif
+
+	" カーソルより左側の範囲を取得し、[:keyword:]を使って補完に使えない記号などを除去
+	let prev_str = (slice(getline('.'), 0, charcol('.')-1) .. v:char) ->substitute('.*[^[:keyword:]]', '', '')
+
+	" カーソル直前の部分（補完元文字列）が最低文字数に満たなければ終了
+	if strchars(prev_str) < s:MINIMUM_COMPLETE_LENGTH
+		return
+	endif
+
+	" <c-n>を実行して補完スタート
+	call feedkeys("\<c-n>", 'ni')
+endfunction
+
+"-------------------------------------------------------
+" 補完の終了
+"-------------------------------------------------------
+function! s:auto_cmp_close() abort
+	" ファイルパス補完の場合は区切り文字が違うので無視
+	if complete_info(['mode']).mode == "files" | return | endif
+
+	" カーソル直前の部分（補完元文字列）の文字列を調査
+	let prev_str = slice(getline('.'), 0, charcol('.')-1) ->substitute('.*[^[:keyword:]]', '', '')
+
+	" 最低文字数に満たなければ`<c-x><c-z>`で補完を終了する
+	if strchars(prev_str) < s:MINIMUM_COMPLETE_LENGTH
+		call feedkeys("\<c-x>\<c-z>", 'ni')
+	endif
+endfunction
+
+"-------------------------------------------------------
+" run last one call in wait time
+"-------------------------------------------------------
+function s:debounce(fn, wait, args = []) abort
+	let timer_name = string(a:fn)
+	call get(s:debounce_timers, timer_name, 0)->timer_stop()
+	let s:debounce_timers[timer_name] = timer_start(a:wait, {-> call(a:fn, a:args) })
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
 
