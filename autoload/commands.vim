@@ -72,7 +72,8 @@ function! commands#reset_errorformat() abort
 
 	if len(bufs) && bufwinnr(bufs[0]) > 0
 		exe bufwinnr(bufs[0]) . 'wincmd w'
-		if !exists('g:GR_GrepCommand') || g:GR_GrepCommand == "internal"
+		let line = getline('.')
+		if stridx(split(line, '|')[1], 'col') >= 0
 			execute 'set errorformat=%f\|%l\ col\ \%c-\%k\|\ %m'
 		else
 			execute 'set errorformat=%f\|%l\|\ %m'
@@ -127,14 +128,19 @@ endfunction
 "-------------------------------------------------------
 " ファイルパスの省略数設定
 "-------------------------------------------------------
-function! commands#edit_omit_num() abort
+function! commands#edit_omit_num(exec_bufnr) abort
 	let val = input('omit num : ')
 	if val !~# '^\d\+$' | let val = 0 | endif
 
 	let separator = has('unix') ? '/' : '\\'
-	let parts = split(expand("%:p"), separator)
+
+	" フルパスを取得する
+	let full_path = fnamemodify(bufname(a:exec_bufnr), ':p')
+	let parts = split(full_path, separator)
 	let path = join(parts[val:], separator)
 
+	echo "\r"
+	redraw
 	echohl MoreMsg | echomsg '[omit:' . val . '] '. path | echohl None
 	return 'let s:omit_num = ' . val
 endfunction
