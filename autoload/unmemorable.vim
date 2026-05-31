@@ -33,13 +33,13 @@ function! s:make_menu_tree() abort
 		\			{'level': 2, 'label': 'sjis', 'action': function('commands#convert_encord', ['sjis'])},
 		\	{'level': 0, 'label': 'NL-Code' , 'child' : 1},
 		\		{'level': 1, 'label': 'Reopen with specified NL', 'child' : 1},
-		\			{'level': 2, 'label': 'unix  (LF)]', 'action': function('commands#reopen_nl', ['unix'])},
-		\			{'level': 2, 'label': 'dos   (CR+LF)]', 'action': function('commands#reopen_nl', ['dos'])},
-		\			{'level': 2, 'label': 'mac   (CR)]', 'action': function('commands#reopen_nl', ['mac'])},
+		\			{'level': 2, 'label': 'unix  [LF]', 'action': function('commands#reopen_nl', ['unix'])},
+		\			{'level': 2, 'label': 'dos   [CR+LF]', 'action': function('commands#reopen_nl', ['dos'])},
+		\			{'level': 2, 'label': 'mac   [CR]', 'action': function('commands#reopen_nl', ['mac'])},
 		\		{'level': 1, 'label': 'Convert with specified NL', 'child' : 1},
-		\			{'level': 2, 'label': 'unix  (LF)]', 'action': function('commands#convert_nl', ['unix'])},
-		\			{'level': 2, 'label': 'dos   (CR+LF)]', 'action': function('commands#convert_nl', ['dos'])},
-		\			{'level': 2, 'label': 'mac   (CR)]', 'action': function('commands#convert_nl', ['mac'])}
+		\			{'level': 2, 'label': 'unix  [LF]', 'action': function('commands#convert_nl', ['unix'])},
+		\			{'level': 2, 'label': 'dos   [CR+LF]', 'action': function('commands#convert_nl', ['dos'])},
+		\			{'level': 2, 'label': 'mac   [CR]', 'action': function('commands#convert_nl', ['mac'])}
 		\ ]
 endfunction
 
