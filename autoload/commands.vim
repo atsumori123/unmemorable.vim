@@ -118,23 +118,31 @@ endfunction
 " ファイルパスをクリップボードに設定
 "-------------------------------------------------------
 function! commands#filepath_to_clipboard(omit_num) abort
-	let separator = has('unix') ? '/' : '\\'
+	let separator = has('unix') ? '/' : '\'
 	let parts = split(expand("%:p"), separator)
 	let @* = join(parts[a:omit_num:], separator)
+	if exists("#OSCYank#TextYankPost")
+		execute 'OSCYankRegister *'
+	endif
 	echohl MoreMsg | echomsg '[To clipboard] '.@* | echohl None
 endfunction
 
 "-------------------------------------------------------
 " ファイルパスの省略数設定
 "-------------------------------------------------------
-function! commands#edit_omit_num() abort
+function! commands#edit_omit_num(exec_bufnr) abort
 	let val = input('omit num : ')
 	if val !~# '^\d\+$' | let val = 0 | endif
 
-	let separator = has('unix') ? '/' : '\\'
-	let parts = split(expand("%:p"), separator)
+	let separator = has('unix') ? '/' : '\'
+
+	" フルパスを取得する
+	let full_path = fnamemodify(bufname(a:exec_bufnr), ':p')
+	let parts = split(full_path, separator)
 	let path = join(parts[val:], separator)
 
+	echo "\r"
+	redraw
 	echohl MoreMsg | echomsg '[omit:' . val . '] '. path | echohl None
 	return 'let s:omit_num = ' . val
 endfunction
