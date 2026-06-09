@@ -261,8 +261,7 @@ endfunction
 " set highlight
 "-------------------------------------------------------
 function! s:set_highlight() abort
-	highlight link NormalFloat Normal
-	highlight link FloatBorder Normal
+	call nvim_win_set_option(s:W.win, 'winhl', 'NormalFloat:Normal,FloatBorder:Normal')
 endfunction
 
 "-------------------------------------------------------
@@ -278,7 +277,7 @@ function! s:open_popup()
 	let s:W.buf = nvim_create_buf(v:false, v:true)
 
 	" create floating window
-	let width = s:max_width(lines)
+	let width = s:max_width(lines) + 20
 	if width > &columns - 4 | let width = &columns - 4 | endif
 	let s:W.win = nvim_open_win(s:W.buf, v:true, {
 						\ 'title'	: ' Unmemorable ',
