@@ -2,6 +2,15 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 "-------------------------------------------------------
+" Initialize
+"-------------------------------------------------------
+function! commands#init(config) abort
+	let s:exec_bufnr = get(a:config, "exec_bufnr", -1)
+	let s:range = get(a:config, "range", {"valid":0, "start":0, "end":0})
+	let s:omit_num = 0
+endfunction
+
+"-------------------------------------------------------
 " OSC Yank
 "-------------------------------------------------------
 function! commands#osc_yank() abort
@@ -23,11 +32,11 @@ endfunction
 "-------------------------------------------------------
 " Space to Tab
 "-------------------------------------------------------
-function! commands#space2tab(range) abort
+function! commands#space2tab() abort
 	let s = substitute(execute("set expandtab?"), '[ \|\n]', "", "ge")
 	execute ':set noexpandtab'
-	if a:range['range']
-		execute ':'.a:range['start'].','.a:range['end'].'retab!'
+	if s:range.valid
+		execute ':'.s:range.start.','.s:range.end.'retab!'
 	else
 		execute ':retab!'
 	endif
@@ -37,11 +46,11 @@ endfunction
 "-------------------------------------------------------
 " Tab to Space
 "-------------------------------------------------------
-function! commands#tab2space(range) abort
+function! commands#tab2space() abort
 	let s = substitute(execute("set expandtab?"), '[ \|\n]', "", "ge")
 	execute ':set expandtab'
-	if a:range['range']
-		execute ':'.a:range['start'].','.a:range['end'].'retab'
+	if s:range.valid
+		execute ':'.s:range.start.','.s:range.end.'retab'
 	else
 		execute ':retab'
 	endif
@@ -51,10 +60,10 @@ endfunction
 "-------------------------------------------------------
 " Remove Spaces and Tabs at end of lines
 "-------------------------------------------------------
-function! commands#remove_space(range) abort
+function! commands#remove_space() abort
 	let pos = getpos(".")
-	if a:range['range']
-		silent execute ':'.a:range['start'].','.a:range['end'].'s/\s\+$//eg'
+	if s:range.valid
+		silent execute ':'.s:range.start.','.s:range.end.'s/\s\+$//eg'
 	else
 		silent execute ':%s/\s\+$//e'
 	endif
@@ -117,10 +126,10 @@ endfunction
 "-------------------------------------------------------
 " ファイルパスをクリップボードに設定
 "-------------------------------------------------------
-function! commands#filepath_to_clipboard(omit_num) abort
-	let separator = has('unix') ? '/' : '\'
-	let parts = split(expand("%:p"), separator)
-	let @* = join(parts[a:omit_num:], separator)
+function! commands#filepath_to_clipboard() abort
+	let sep = has('win32') || has('win64') && !&shellslash ? '\' : "/"
+	let parts = split(expand("%:p"), sep)
+	let @* = join(parts[s:omit_num:], sep)
 	if exists("#OSCYank#TextYankPost")
 		execute 'OSCYankRegister *'
 	endif
@@ -130,21 +139,26 @@ endfunction
 "-------------------------------------------------------
 " ファイルパスの省略数設定
 "-------------------------------------------------------
-function! commands#edit_omit_num(exec_bufnr) abort
-	let val = input('omit num : ')
-	if val !~# '^\d\+$' | let val = 0 | endif
+function! commands#set_omit_num(val) abort
+	" 省略数の増減値が0(初期値)の場合は何もせず復帰
+	if a:val == 0 | return s:omit_num | endif
 
-	let separator = has('unix') ? '/' : '\'
+	" 省略数を増減
+	let s:omit_num = max([s:omit_num + a:val, 0])
 
-	" フルパスを取得する
-	let full_path = fnamemodify(bufname(a:exec_bufnr), ':p')
-	let parts = split(full_path, separator)
-	let path = join(parts[val:], separator)
+	" フルパスを取得して区切り文字で分割する
+	let sep = has('win32') || has('win64') && !&shellslash ? '\' : "/"
+	let full_path = fnamemodify(bufname(s:exec_bufnr), ':p')
+	let parts = split(full_path, sep)
 
-	echo "\r"
-	redraw
-	echohl MoreMsg | echomsg '[omit:' . val . '] '. path | echohl None
-	return 'let s:omit_num = ' . val
+	" 省略数に応じてパスを作成
+	let omit_path = join(parts[s:omit_num:], sep)
+
+	" ステータス行に表示
+	echo "\r" | redraw
+	echohl MoreMsg | echomsg '[omit:' .s:omit_num . '] '. omit_path | echohl None
+
+	return s:omit_num
 endfunction
 
 "-------------------------------------------------------

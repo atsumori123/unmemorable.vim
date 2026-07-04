@@ -1,181 +1,211 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" パスの省略数(Filepath to clipboard用)
-let s:omit_num = 0
+let s:highlight_id = -1
 
-" 実行元のbufnr
-let s:exec_bufnr = -1
-
-" メニューツリー
-" level:階層レベル, label:表示名, action:実行コマンド, child:子要素の有無
-function! s:make_menu_tree() abort
-	let s:menu_tree = [
-		\	{'level': 0, 'label': 'Filepath to clipboard [omit='.s:omit_num.']', 'action': function('commands#filepath_to_clipboard', [s:omit_num]), 'edit': function('commands#edit_omit_num', [s:exec_bufnr])},
-		\	{'level': 0, 'label': 'Auto Complete ['.(exists("#AutoComplete#InsertCharPre") ? 'ON' : 'OFF').']' , 'action' : function('commands#auto_complete')},
-		\	{'level': 0, 'label': 'Buffer', 'child': 1},
-		\		{'level': 1, 'label': 'Tab  ['.&tabstop.']', 'action': function('commands#tab')},
-		\		{'level': 1, 'label': 'Modifiable  ['.(&modifiable ? "+" : "-").']', 'action': function('commands#modifiable')},
-		\		{'level': 1, 'label': 'Read Only  ['.(&readonly ? 'RO' : 'RW').']', 'action': function('commands#rw')},
-		\		{'level': 1, 'label': 'Visualization control code  ['.(&list ? 'ON' : 'OFF').']', 'action': function('commands#visualization')},
-		\		{'level': 1, 'label': 'Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']', 'action': function('commands#ignorecase')},
-		\		{'level': 1, 'label': 'OSC Yank ['.(exists("#OSCYank#TextYankPost") ? 'ON' : 'OFF').']', 'action': function('commands#osc_yank')},
-		\	{'level': 0, 'label': 'Quickfix', 'child' : 1},
-		\		{'level': 1, 'label': 'Reset error format', 'action': function('commands#reset_errorformat')},
-		\		{'level': 1, 'label': 'Remove comment line', 'action': function('commands#remove_comment_line')},
-		\	{'level': 0, 'label': 'Tab and Space', 'child' : 1},
-		\		{'level': 1, 'label': 'Space to Tab', 'action': function('commands#space2tab', [s:range])},
-		\		{'level': 1, 'label': 'Tab to Space', 'action': function('commands#tab2space', [s:range])},
-		\		{'level': 1, 'label': 'Remove trailin Sapces and tabs from lines', 'action': function('commands#remove_space', [s:range])},
-		\	{'level': 0, 'label': 'File Encord', 'child' : 1},
-		\		{'level': 1, 'label': 'Reopen with specified encording', 'child' : 1},
-		\			{'level': 2, 'label': 'utf-8', 'action': function('commands#reopen_encord', ['utf8'])},
-		\			{'level': 2, 'label': 'sjis', 'action': function('commands#reopen_encord', ['sjis'])},
-		\		{'level': 1, 'label': 'Convert with specified encording', 'child' : 1},
-		\			{'level': 2, 'label': 'utf-8', 'action': function('commands#convert_encord', ['utf8'])},
-		\			{'level': 2, 'label': 'sjis', 'action': function('commands#convert_encord', ['sjis'])},
-		\	{'level': 0, 'label': 'NL-Code' , 'child' : 1},
-		\		{'level': 1, 'label': 'Reopen with specified NL', 'child' : 1},
-		\			{'level': 2, 'label': 'unix  [LF]', 'action': function('commands#reopen_nl', ['unix'])},
-		\			{'level': 2, 'label': 'dos   [CR+LF]', 'action': function('commands#reopen_nl', ['dos'])},
-		\			{'level': 2, 'label': 'mac   [CR]', 'action': function('commands#reopen_nl', ['mac'])},
-		\		{'level': 1, 'label': 'Convert with specified NL', 'child' : 1},
-		\			{'level': 2, 'label': 'unix  [LF]', 'action': function('commands#convert_nl', ['unix'])},
-		\			{'level': 2, 'label': 'dos   [CR+LF]', 'action': function('commands#convert_nl', ['dos'])},
-		\			{'level': 2, 'label': 'mac   [CR]', 'action': function('commands#convert_nl', ['mac'])}
+function! s:make_menu_table() abort
+	let s:MENU = [
+		\	{'label': '- Filepath to clipboard. omit={%}', 'action': function('commands#filepath_to_clipboard'), 'param': function('commands#set_omit_num')},
+		\	{'label': '- Auto Complete  ['.(exists("#AutoComplete#InsertCharPre") ? 'ON' : 'OFF').']' , 'action' : function('commands#auto_complete')},
+		\	{'label': '- Tabstop  ['.&tabstop.']', 'action': function('commands#tab')},
+		\	{'label': '- Modifiable. ['.(&modifiable ? "+" : "-").']', 'action': function('commands#modifiable')},
+		\	{'label': '- Read Only  ['.(&readonly ? 'RO' : 'RW').']', 'action': function('commands#rw')},
+		\	{'label': '- Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']', 'action': function('commands#ignorecase')},
+		\	{'label': '- Visualization control code  ['.(&list ? 'ON' : 'OFF').']', 'action': function('commands#visualization')},
+		\	{'label': '- OSC Yank  ['.(exists("#OSCYank#TextYankPost") ? 'ON' : 'OFF').']', 'action': function('commands#osc_yank')},
+		\	{'label': '- Reset error format (Quickfix)', 'action': function('commands#reset_errorformat')},
+		\	{'label': '- Remove comment line (Quickfix)', 'action': function('commands#remove_comment_line')},
+		\	{'label': '- Space to Tab', 'action': function('commands#space2tab'), 'arg':'range'},
+		\	{'label': '- Tab to Space', 'action': function('commands#tab2space'), 'arg':'range'},
+		\	{'label': '- Remove trailin Sapces and tabs from lines', 'action': function('commands#remove_space'), 'arg':'range'},
+		\	{'label': '- Reopen with {%} encording  (utf8/sjis)', 'action': function('commands#reopen_encord'), 'param':['utf8', 'sjis']},
+		\	{'label': '- Convert to {%} encording  (utf8/sjis)', 'action': function('commands#convert_encord'), 'param':['utf8', 'sjis']},
+		\	{'label': '- Reopen with {%} style NL code  (unix:LF/dos:CR+LF/mac:CR)', 'action': function('commands#reopen_nl'), 'param':["unix", "dos", "mac"]},
+		\	{'label': '- Convert to {%} style NL code  (unix:LF/dos:CR+LF/mac:CR)', 'action': function('commands#convert_nl'), 'param':["unix", "dos", "mac"]}
 		\ ]
 endfunction
 
 "-------------------------------------------------------
-" 親のインデックス番号を取得する
-"-------------------------------------------------------
-function! s:search_parent(idx, level) abort
-	" 今いる位置ががトップレベルの場合はそのまま返す
-	if s:menu_tree[a:idx].level == 0
-		return a:idx
-	endif
-	
-	" 1つ上の要素から遡って親を探す
-	let start = a:idx - 1
-	for i in range(start, 0, -1)
-		" levelが小さい(=親)要素か?
-		if s:menu_tree[i].level < a:level
-			return i
-		endif
-	endfor
-
-	return 0
-endfunction
-
-"-------------------------------------------------------
-" 表示用のメニューリストを作成する関数
+" 表示用のメニューリストを作成
 "-------------------------------------------------------
 function! s:make_menu()
+	" メニューの数だけ繰り返す
 	let lines = []
-	let s:visible_map = [] " 表示行と元のデータインデックスの紐付け
-  
-	" メニューリストの数だけ繰り返す
-	for i in range(0, len(s:menu_tree) - 1, 1)
-		let item = s:menu_tree[i]
-   
-		" 表示/非表示 (トップレベルは必ず表示, 子要素は親の展開状況による
-		if item.level == 0
-			let should_show = 1
-		else
-			let should_show = !!get(s:expanded_indices, s:search_parent(i, item.level), 0)
+	for item in s:MENU
+		if has_key(item, 'param')
+			let v = type(item.param) == v:t_func ? item.param(0) : type(item.param) == v:t_list ? item.param[0] : item.param
+			let item.label = substitute(item.label, '{\zs[^}]*\ze}', v, '')
 		endif
-
-		if should_show
-        	" インデント計算（levelの大きさで計算）
-			let prefix = repeat('  ', item.level)
-			" 折り畳みマーク
-			let mark = get(item, 'child', 0) ? (get(s:expanded_indices, i, 0) ? '- ' : '+ ') : '- '
-			" 表示リストに追加
-			call add(lines, prefix . mark . item.label)
-			" menu_tree[]の配列番号(0起算)を追加
-			call add(s:visible_map, i)
-		endif
+  		call add(lines, item.label) 
 	endfor
 
 	return lines
 endfunction
 
 "-------------------------------------------------------
-" 指定したインデックス配下の子要素をすべて再帰的に閉じる
+" 選択アイテムの行番号とメニューの要素番号の取得
 "-------------------------------------------------------
-function! s:collapse_recursive(parent_idx)
-	" 親のレベル
-	let parent_level = s:menu_tree[a:parent_idx].level
-  
-	" 次の要素から順に、親より深いレベルの要素を探す
-	let i = a:parent_idx + 1
-	while i < len(s:menu_tree) && s:menu_tree[i].level > parent_level
-		if has_key(s:expanded_indices, i)
-			let s:expanded_indices[i] = 0
+function! s:get_lnum_and_id(winid) abort
+	let lnum = line('.', a:winid)
+	let s = substitute(trim(win_execute(a:winid, 'echo getline(".")')), '\[.*\]', '\\[.*\\]', '')
+	let i = match(s:MENU, s)
+	return [lnum, i]
+endfunction
+
+"-------------------------------------------------------
+" パラメータの切り替え
+"-------------------------------------------------------
+function! s:change_param(winid, id, direction) abort
+	" 選択アイテムの取得
+	let item = s:MENU[a:id]
+
+	" パラメータが存在しない場合は終了
+	if type(get(item, "param", v:none)) == v:t_none | return | endif
+
+	" 値の更新
+	if type(item.param) == v:t_func		" 関数
+		let val = item.param(a:direction)
+
+	elseif type(item.param) == v:t_list	" リスト
+		" パラメータが選択項目の場合
+		if a:direction > 1	" 次の要素
+			call add(item.param, remove(item.param, 0))
+		else				" 前の要素
+			call insert(item.param, remove(item.param, -1), 0)
 		endif
-		let i += 1
-	endwhile
+		let val = item.param[0]
+	else								" 数値
+		let item.param = max([item.param + a:direction, 0])
+		let val = item.param
+	endif
+
+	" 新しいパラメータに更新
+	let item.label = substitute(item.label, '{\zs[^}]*\ze}', val, '')
+endfunction
+
+"-------------------------------------------------------
+" Update popup menu
+"-------------------------------------------------------
+function! s:update_text(winid, old_pattern, pattern) abort
+	let [old_len, new_len] = [len(a:old_pattern), len(a:pattern)]
+
+	" フィルタリングパターンに変化が無い場合は処理なし
+	if old_len == new_len | return | endif
+
+	" フィルタパターンのハイライトをクリア(無効なID指定によるエラーは無視)
+	silent! call matchdelete(s:highlight_id, a:winid)
+
+	" ファイルリストを取得
+	let files = copy(old_len < new_len ? getbufline(winbufnr(a:winid), 1, '$') : s:make_menu())
+
+	" フィルタリングの条件式を作成
+	if len(a:pattern)
+		let cond = ""
+		for v in split(a:pattern, "|")
+			let cond .= printf("%sv:val %s '%s'", (len(cond) ? " && " : ""), (v =~# '[A-Z]' ? '=~#' : '=~?'), escape(v, '.'))
+		endfor
+		call filter(files, cond)
+	endif
+
+	" タイトルの更新
+	call popup_setoptions(a:winid, {'title' : printf(" > %s ", a:pattern)})
+	
+	" 表示
+	call popup_settext(a:winid, files)
+
+	" フィルタリングパターンをハイライト
+	if len(a:pattern)
+		for v in split(a:pattern, "|")
+			let s:highlight_id = matchadd('Title', (v =~# '[A-Z]' ? '' : '\c') . v, 10, -1, {'window': a:winid})
+		endfor
+	endif
+endfunction
+
+"-------------------------------------------------------
+" 選択行を最新に更新
+"-------------------------------------------------------
+function! s:update_item(winid, lnum, id) abort
+	" 現在の表示テキストを取得
+	let lines = getbufline(winbufnr(a:winid), 1, '$')
+
+	" 表示テキストに反映
+	let lines[a:lnum - 1] = s:MENU[a:id].label
+
+	" 表示
+	call popup_settext(a:winid, lines)
 endfunction
 
 "-------------------------------------------------------
 " ポップアップのフィルタ（キー入力制御）
 "-------------------------------------------------------
 function! s:menu_filter(winid, key)
-	let lnum = line('.', a:winid)		" 行番号は1起算
-	let idx = s:visible_map[lnum - 1]	" menu_tree[]の表示する要素の配列番号を管理 (0起算)
-	let item = s:menu_tree[idx]
+	let old_pattern = s:pattern
 
-	if a:key == 'l' " 展開
-		if get(item, 'child', 0)
-			" 子要素があるメニューの場合は展開フラグをオン
-			let s:expanded_indices[idx] = 1
-
-			" 再描画
-			call popup_settext(a:winid, s:make_menu())
-		endif
+	if a:key ==# "\<BS>" || a:key =~ '^[a-z0-9_._\|\ ]\+$'
+		let s:pattern = a:key ==# "\<BS>" ? s:pattern[:-2] : s:pattern . a:key
+		call s:update_text(a:winid, old_pattern, s:pattern)
 		return 1
 
-	elseif a:key == 'h' " 折り畳み
-		" 遡って親を探し、再帰的に展開フラグをオフ
-		let parent_idx = s:search_parent(idx, item.level)
-		let s:expanded_indices[parent_idx] = 0
+	elseif a:key ==# "\<c-j>"
+		call win_execute(a:winid, 'normal! j')
+		return 1
 
-		" 再帰的に子要素の展開フラグをオフ
-		call s:collapse_recursive(parent_idx)
+	elseif a:key ==# "\<c-k>"
+		call win_execute(a:winid, 'normal! k')
+		return 1
 
-		" 再描画
-		call popup_settext(a:winid, s:make_menu())
+	elseif a:key ==# "\<c-f>"
+		call win_execute(a:winid, 'normal! 18j')
+		return 1
 
-		" カーソル位置を親のところに移動
-		let n = len(filter(copy(s:visible_map), 'v:val <= idx'))
-		call win_execute(a:winid, 'call cursor(' . n . ', 1)')
- 		return 1
+	elseif a:key ==# "\<c-b>"
+		call win_execute(a:winid, 'normal! 18k')
+		return 1
 
-	elseif a:key == "\<CR>" " 実行
-		if has_key(item, 'action')
-			call popup_close(a:winid)
+	elseif a:key ==# "\<c-u>"
+		let s:pattern = ""
+		call s:update_text(a:winid, "dummy", s:pattern)
+		return 1
+
+	elseif a:key ==# "\<c-l>" || a:key ==# "\<c-h>"
+		let [lnum, id] = s:get_lnum_and_id(a:winid)
+		call s:change_param(a:winid, id, a:key ==# "\<c-l>" ? 1 : -1)
+		call s:update_item(a:winid, lnum, id)
+		return 1
+
+	elseif a:key ==# "\<ESC>"
+		call popup_close(a:winid, -1)
+		return -1
+	endif
+
+	return popup_filter_menu(a:winid, a:key)
+endfunction
+
+"---------------------------------------------------------------
+" Selected handler
+"---------------------------------------------------------------
+function! s:on_select(winid, result) abort
+	" <ESC>の場合は終了
+	if a:result == -1 | return | endif
+
+	" 選択アイテムの取得
+	let [lnum, id] = s:get_lnum_and_id(a:winid)
+	let item = s:MENU[id]
+
+	" コマンドの実行
+	if has_key(item, 'param')
+		if type(item.param) == v:t_func
 			call item.action()
+		elseif type(item.param) == v:t_list
+			call item.action(item.param[0])
+		else
+			call item.action(item.param)
 		endif
-		return 1
+	else
+		call item.action()
+	endif
 
-	elseif a:key == 'e' " 編集
-		if has_key(item, 'edit')
-			let ret = item.edit()
-			if !empty(ret)
-				execute ret
-				call s:make_menu_tree()
-				call popup_settext(a:winid, s:make_menu())
-			endif
-		endif
-		return 1
-
-	elseif a:key ==# 'q'	" 終了
-        call popup_close(a:winid, -1)
-        return 1
-
-  endif
-
-  return popup_filter_menu(a:winid, a:key)
+	unlet s:MENU
 endfunction
 
 "-------------------------------------------------------
@@ -183,33 +213,45 @@ endfunction
 "-------------------------------------------------------
 function! s:open_popup()
 	let opts = {
-			\ 'border': [1,1,1,1],
-			\ 'padding': [1,2,1,2],
-			\ 'cursorline': 1,
-			\ 'minwidth':50,
-			\ 'mapping': v:false,
-        	\ 'title': ' Unmemorable (l:Expand, h:folding, Enter:Exec) ',
-        	\ 'callback': {id, res -> 0},
-			\ 'filter': function('s:menu_filter'),
+        	\ 'title':			' > ',
+			\ 'border':			[1,1,1,1],
+			\ 'padding':		[1,2,1,2],
+			\ 'borderchars':	has('unix') ? [] : ['─','│','─','│','┌','┐','┘','└'],
+			\ 'minheight':		len(s:MENU),
+			\ 'maxheight':		len(s:MENU),
+			\ 'minwidth':		80,
+			\ 'mmaxwidth':		80,
+			\ 'mapping':		v:false,
+			\ 'wrap':			v:false,
+			\ 'scrollbar':		0,
+			\ 'callback':		function('s:on_select'),
+			\ 'filter':			function('s:menu_filter'),
 			\ }
 
 	const winid = popup_menu(s:make_menu(), opts)
+
+	" []の部分をハイライト
+	call matchadd('Identifier', '\[[^\]]*\]', 10, -1, {'window': winid})
+	" {}の部分をハイライト
+	call matchadd('Todo', '{[^}]*}', 10, -1, {'window': winid})
 endfunction
 
 "-------------------------------------------------------
 " Unmemorable start
 "-------------------------------------------------------
 function! unmemorable#start(range, start, end) abort
-	" 選択範囲
-	let s:range = {'range':a:range, 'start':a:start, 'end':a:end}
+	let s:pattern = ""
+	let s:highlight_id = -1
 
-	" 状態管理：どのメニューが展開されているか (インデックスを保持)
-	let s:expanded_indices = {}
+	" 初期設定
+	let conf = {
+			\ 'exec_bufnr': bufnr("%"),
+			\ 'range': {'valid':a:range, 'start':a:start, 'end':a:end},
+			\ }
+	call commands#init(conf)
 
-	" 実行元のbufnr
-	let s:exec_bufnr = bufnr("%")
+	call s:make_menu_table()
 
-	call s:make_menu_tree()
 	call s:open_popup()
 endfunction
 
