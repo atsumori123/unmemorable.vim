@@ -233,7 +233,7 @@ function! s:open_popup()
 	" []の部分をハイライト
 	call matchadd('Identifier', '\[[^\]]*\]', 10, -1, {'window': winid})
 	" {}の部分をハイライト
-	call matchadd('Todo', '{[^}]*}', 10, -1, {'window': winid})
+	call matchadd('Question', '{[^}]*}', 10, -1, {'window': winid})
 endfunction
 
 "-------------------------------------------------------

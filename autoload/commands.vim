@@ -127,7 +127,7 @@ endfunction
 " ファイルパスをクリップボードに設定
 "-------------------------------------------------------
 function! commands#filepath_to_clipboard() abort
-	let sep = has('win32') || has('win64') && !&shellslash ? '\' : "/"
+	let sep = (has('win32') || has('win64')) && !&shellslash ? '\' : "/"
 	let parts = split(expand("%:p"), sep)
 	let @* = join(parts[s:omit_num:], sep)
 	if exists("#OSCYank#TextYankPost")
@@ -147,7 +147,7 @@ function! commands#set_omit_num(val) abort
 	let s:omit_num = max([s:omit_num + a:val, 0])
 
 	" フルパスを取得して区切り文字で分割する
-	let sep = has('win32') || has('win64') && !&shellslash ? '\' : "/"
+	let sep = (has('win32') || has('win64')) && !&shellslash ? '\' : "/"
 	let full_path = fnamemodify(bufname(s:exec_bufnr), ':p')
 	let parts = split(full_path, sep)
 
