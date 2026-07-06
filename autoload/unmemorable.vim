@@ -8,7 +8,7 @@ function! s:make_menu_table() abort
 		\	{'label': '- Filepath to clipboard. omit={%}', 'action': function('commands#filepath_to_clipboard'), 'param': function('commands#set_omit_num')},
 		\	{'label': '- Auto Complete  ['.(exists("#AutoComplete#InsertCharPre") ? 'ON' : 'OFF').']' , 'action' : function('commands#auto_complete')},
 		\	{'label': '- Tabstop  ['.&tabstop.']', 'action': function('commands#tab')},
-		\	{'label': '- Modifiable. ['.(&modifiable ? "+" : "-").']', 'action': function('commands#modifiable')},
+		\	{'label': '- Modifiable  ['.(&modifiable ? "+" : "-").']', 'action': function('commands#modifiable')},
 		\	{'label': '- Read Only  ['.(&readonly ? 'RO' : 'RW').']', 'action': function('commands#rw')},
 		\	{'label': '- Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']', 'action': function('commands#ignorecase')},
 		\	{'label': '- Visualization control code  ['.(&list ? 'ON' : 'OFF').']', 'action': function('commands#visualization')},

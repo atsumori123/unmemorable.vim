@@ -7,7 +7,7 @@ set cpoptions&vim
 function! commands#init(config) abort
 	let s:exec_bufnr = get(a:config, "exec_bufnr", -1)
 	let s:range = get(a:config, "range", {"valid":0, "start":0, "end":0})
-	let s:omit_num = 0
+	if !exists('s:omit_num') | let s:omit_num = 0 | endif
 endfunction
 
 "-------------------------------------------------------
