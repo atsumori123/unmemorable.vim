@@ -1,8 +1,6 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:highlight_id = -1
-
 function! s:make_menu_table() abort
 	let s:MENU = [
 		\	{'label': '- Filepath to clipboard. omit={%}', 'action': function('commands#filepath_to_clipboard'), 'param': function('commands#set_omit_num')},
@@ -43,24 +41,29 @@ function! s:make_menu()
 endfunction
 
 "-------------------------------------------------------
-" 選択アイテムの行番号とメニューの要素番号の取得
+" 選択アイテムの要素番号を返却する
 "-------------------------------------------------------
-function! s:get_lnum_and_id(winid) abort
-	let lnum = line('.', a:winid)
-	let s = substitute(trim(win_execute(a:winid, 'echo getline(".")')), '\[.*\]', '\\[.*\\]', '')
-	let i = match(s:MENU, s)
-	return [lnum, i]
+function! s:get_item_no(win) abort
+	let s = substitute(trim(win_execute(a:win, 'echo getline(".")')), '\[.*\]', '\\[.*\\]', '')
+	return match(s:MENU, s)
 endfunction
 
 "-------------------------------------------------------
 " パラメータの切り替え
 "-------------------------------------------------------
-function! s:change_param(winid, id, direction) abort
+function! s:change_param(win, direction) abort
+	" カーソル位置の行番号(1起算)を返却する
+	let lnum = win_execute(a:win, 'echo line(".")') ->trim() ->str2nr()
+
 	" 選択アイテムの取得
-	let item = s:MENU[a:id]
+	let item = s:MENU[s:get_item_no(a:win)]
 
 	" パラメータが存在しない場合は終了
-	if type(get(item, "param", v:none)) == v:t_none | return | endif
+	if has("nvim")
+		if type(get(item, "param", v:null)) == type(v:null) | return | endif
+	else
+		if type(get(item, "param", v:none)) == v:t_none | return | endif
+	endif
 
 	" 値の更新
 	if type(item.param) == v:t_func		" 関数
@@ -81,116 +84,83 @@ function! s:change_param(winid, id, direction) abort
 
 	" 新しいパラメータに更新
 	let item.label = substitute(item.label, '{\zs[^}]*\ze}', val, '')
+
+	" 表示を更新
+	call setbufline(winbufnr(a:win), lnum, item.label)
 endfunction
 
 "-------------------------------------------------------
 " Update popup menu
 "-------------------------------------------------------
-function! s:update_text(winid, old_pattern, pattern) abort
-	let [old_len, new_len] = [len(a:old_pattern), len(a:pattern)]
-
-	" フィルタリングパターンに変化が無い場合は処理なし
-	if old_len == new_len | return | endif
-
+function! s:update_text(win, new_pattern) abort
 	" フィルタパターンのハイライトをクリア(無効なID指定によるエラーは無視)
-	silent! call matchdelete(s:highlight_id, a:winid)
+	silent! call matchdelete(s:highlight_id, a:win)
 
 	" ファイルリストを取得
-	let files = copy(old_len < new_len ? getbufline(winbufnr(a:winid), 1, '$') : s:make_menu())
+	let f = (len(s:old_pattern) <= len(a:new_pattern)) && stridx(a:new_pattern, s:old_pattern, 0) == 0 ? 1 : 0
+	let files = copy(f ? getbufline(winbufnr(a:win), 1, '$') : s:make_menu())
 
 	" フィルタリングの条件式を作成
-	if len(a:pattern)
+	if len(a:new_pattern)
 		let cond = ""
-		for v in split(a:pattern, "|")
+		for v in split(a:new_pattern, "|")
 			let cond .= printf("%sv:val %s '%s'", (len(cond) ? " && " : ""), (v =~# '[A-Z]' ? '=~#' : '=~?'), escape(v, '.'))
 		endfor
 		call filter(files, cond)
 	endif
 
-	" タイトルの更新
-	call popup_setoptions(a:winid, {'title' : printf(" > %s ", a:pattern)})
-	
-	" 表示
-	call popup_settext(a:winid, files)
+	" タイトルとメニューを更新
+	if has("nvim")
+		call nvim_win_set_config(a:win, {'title' : printf(" > %s ", a:new_pattern)})
+		call nvim_buf_set_text(0, 0, 0, -1, -1, files)
+		call nvim_win_set_cursor(0, [1, 0])
+	else
+		call popup_setoptions(a:win, {'title' : printf(" > %s ", a:new_pattern)})
+		call popup_settext(a:win, files)
+		call win_execute(a:win, 'call cursor(1, 1)')
+	endif
 
 	" フィルタリングパターンをハイライト
-	if len(a:pattern)
-		for v in split(a:pattern, "|")
-			let s:highlight_id = matchadd('Title', (v =~# '[A-Z]' ? '' : '\c') . v, 10, -1, {'window': a:winid})
+	if len(a:new_pattern)
+		for v in split(a:new_pattern, "|")
+			let s:highlight_id = matchadd('Title', (v =~# '[A-Z]' ? '' : '\c') . v, 10, -1, {'window': a:win})
 		endfor
 	endif
+
+	" フィルタリングパターンを記憶
+	let s:old_pattern = a:new_pattern
 endfunction
 
-"-------------------------------------------------------
-" 選択行を最新に更新
-"-------------------------------------------------------
-function! s:update_item(winid, lnum, id) abort
-	" 現在の表示テキストを取得
-	let lines = getbufline(winbufnr(a:winid), 1, '$')
-
-	" 表示テキストに反映
-	let lines[a:lnum - 1] = s:MENU[a:id].label
-
-	" 表示
-	call popup_settext(a:winid, lines)
-endfunction
-
-"-------------------------------------------------------
-" ポップアップのフィルタ（キー入力制御）
-"-------------------------------------------------------
-function! s:menu_filter(winid, key)
-	let old_pattern = s:pattern
-
-	if a:key ==# "\<BS>" || a:key =~ '^[a-z0-9_._\|\ ]\+$'
-		let s:pattern = a:key ==# "\<BS>" ? s:pattern[:-2] : s:pattern . a:key
-		call s:update_text(a:winid, old_pattern, s:pattern)
-		return 1
-
-	elseif a:key ==# "\<c-j>"
-		call win_execute(a:winid, 'normal! j')
-		return 1
-
-	elseif a:key ==# "\<c-k>"
-		call win_execute(a:winid, 'normal! k')
-		return 1
-
-	elseif a:key ==# "\<c-f>"
-		call win_execute(a:winid, 'normal! 18j')
-		return 1
-
-	elseif a:key ==# "\<c-b>"
-		call win_execute(a:winid, 'normal! 18k')
-		return 1
-
-	elseif a:key ==# "\<c-u>"
+"---------------------------------------------------------------
+" debounce update
+"---------------------------------------------------------------
+function! s:debounce_update(winid, key)
+	if a:key == "BS"
+		let s:pattern = s:pattern[:-2]
+	elseif a:key == "CLR"
 		let s:pattern = ""
-		call s:update_text(a:winid, "dummy", s:pattern)
-		return 1
-
-	elseif a:key ==# "\<c-l>" || a:key ==# "\<c-h>"
-		let [lnum, id] = s:get_lnum_and_id(a:winid)
-		call s:change_param(a:winid, id, a:key ==# "\<c-l>" ? 1 : -1)
-		call s:update_item(a:winid, lnum, id)
-		return 1
-
-	elseif a:key ==# "\<ESC>"
-		call popup_close(a:winid, -1)
-		return -1
+	else
+		let s:pattern .= a:key
 	endif
-
-	return popup_filter_menu(a:winid, a:key)
+		
+	" タイマーが動いていたら停止
+	if s:timer_id != 0 | call timer_stop(s:timer_id) | endif
+	" 150ms 入力が止まったら実行
+	let s:timer_id = timer_start(150, {-> s:update_text(a:winid, s:pattern)})
 endfunction
 
 "---------------------------------------------------------------
-" Selected handler
+" 選択アイテムの実行
 "---------------------------------------------------------------
-function! s:on_select(winid, result) abort
-	" <ESC>の場合は終了
-	if a:result == -1 | return | endif
+function! s:on_select(win, no) abort
+	" 選択アイテムを取得
+	let item = s:MENU[a:no]
 
-	" 選択アイテムの取得
-	let [lnum, id] = s:get_lnum_and_id(a:winid)
-	let item = s:MENU[id]
+	if has("nvim")
+		call nvim_win_close(0, 1)
+	else
+		call popup_close(a:win, 1)
+	endif
 
 	" コマンドの実行
 	if has_key(item, 'param')
@@ -209,9 +179,114 @@ function! s:on_select(winid, result) abort
 endfunction
 
 "-------------------------------------------------------
+" ポップアップのフィルタ（キー入力制御）
+"-------------------------------------------------------
+function! s:menu_filter(win, key)
+	if a:key =~ '^[a-z0-9_._\|\ ]\+$'
+		call s:debounce_update(a:win, a:key)
+		return 1
+
+	elseif a:key == "\<BS>"
+		call s:debounce_update(a:win, "BS")
+		return 1
+
+	elseif a:key == "\<c-j>"
+		return popup_filter_menu(a:win, 'j')
+
+	elseif a:key == "\<c-k>"
+		return popup_filter_menu(a:win, 'k')
+
+	elseif a:key == "\<c-f>"
+		call win_execute(a:win, 'normal! 18j')
+		return 1
+
+	elseif a:key == "\<c-b>"
+		call win_execute(a:win, 'normal! 18k')
+		return 1
+
+	elseif a:key == "\<c-u>"
+		call s:debounce_update(a:win, "CLR")
+		return 1
+
+	elseif a:key == "\<c-l>"
+		call s:change_param(a:win, 1)
+		return 1
+
+	elseif a:key == "\<c-h>"
+		call s:change_param(a:win, -1)
+		return 1
+
+	elseif a:key == "\<CR>"
+		call s:on_select(a:win, s:get_item_no(a:win))
+		return 1
+	endif
+
+	return popup_filter_menu(a:win, a:key)
+endfunction
+
+if has('nvim')
+"-------------------------------------------------------
 " ポップアップメニュー起動
 "-------------------------------------------------------
-function! s:open_popup()
+function! s:open_popup() abort
+	" バッファを作成 (listed=false, scratch(使い捨て)=true)
+	let buf = nvim_create_buf(v:false, v:true)
+
+	" create floating window
+	let win = nvim_open_win(buf, v:true, {
+						\ "title"	: " > ",
+						\ "style"	: "minimal",
+						\ "relative": "editor",
+						\ "height"	: len(s:MENU),
+						\ "width"	: 80,
+						\ "col"		: float2nr((&columns - 80) * 0.5 - 1),
+						\ "row"		: float2nr((&lines - len(s:MENU)) * 0.5 -1),
+						\ "border"	: "rounded",
+						\ })
+
+	" 変更禁止解除→描画
+	setlocal modifiable
+	call nvim_buf_set_lines(0, 0, -1, v:false, s:make_menu())
+
+	" カーソルを先頭に設定
+	call nvim_win_set_cursor(0, [1, 0])
+
+	" set buffer option
+	setlocal bufhidden=wipe
+	setlocal noswapfile
+	setlocal nowrap
+	setlocal cursorline
+
+	" フォーカスが外れたら自動で閉じる(winid=0(現在のウィンドウ), force=1)
+	autocmd WinLeave <buffer> ++once call nvim_win_close(0, 1)
+
+	" []の部分をハイライト
+	call matchadd('Identifier', '\[[^\]]*\]', 10, -1, {'window': win})
+	" {}の部分をハイライト
+	call matchadd('Special', '{[^}]*}', 10, -1, {'window': win})
+
+	" 必要な文字を一括登録
+	let keys = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.|"
+	for i in range(0, len(keys) - 1)
+		let k = escape(keys[i], '|')
+		execute printf('nnoremap <buffer> <silent> %s :call <SID>debounce_update(%d, "%s")<CR>', k, win, k)
+	endfor
+
+	nnoremap <buffer> <silent> <c-j> j
+	nnoremap <buffer> <silent> <c-k> k
+	execute printf("nnoremap <buffer> <silent> <nowait> <ESC> :call nvim_win_close(0, v:true)<CR>")
+	execute printf('nnoremap <buffer> <silent> <CR>  :call <SID>on_select(0, <SID>get_item_no(%d))<CR>', win)
+	execute printf('nnoremap <buffer> <silent> <BS>  :call <SID>debounce_update(%d, "BS")<CR>', win)
+	execute printf('nnoremap <buffer> <silent> <c-u> :call <SID>debounce_update(%d, "CLR")<CR>', win)
+	execute printf('nnoremap <buffer> <silent> <c-l> :call <SID>change_param(%d, 1)<CR>', win)
+	execute printf('nnoremap <buffer> <silent> <c-h> :call <SID>change_param(%d, -1)<CR>', win)
+endfunction
+
+else
+"-------------------------------------------------------
+" ポップアップメニュー起動
+"-------------------------------------------------------
+function! s:open_popup() abort
 	let opts = {
         	\ 'title':			' > ',
 			\ 'border':			[1,1,1,1],
@@ -224,24 +299,26 @@ function! s:open_popup()
 			\ 'mapping':		v:false,
 			\ 'wrap':			v:false,
 			\ 'scrollbar':		0,
-			\ 'callback':		function('s:on_select'),
 			\ 'filter':			function('s:menu_filter'),
 			\ }
 
-	const winid = popup_menu(s:make_menu(), opts)
+	const win = popup_menu(s:make_menu(), opts)
 
 	" []の部分をハイライト
-	call matchadd('Identifier', '\[[^\]]*\]', 10, -1, {'window': winid})
+	call matchadd('Identifier', '\[[^\]]*\]', 10, -1, {'window': win})
 	" {}の部分をハイライト
-	call matchadd('Question', '{[^}]*}', 10, -1, {'window': winid})
+	call matchadd('Question', '{[^}]*}', 10, -1, {'window': win})
 endfunction
+endif
 
 "-------------------------------------------------------
 " Unmemorable start
 "-------------------------------------------------------
 function! unmemorable#start(range, start, end) abort
 	let s:pattern = ""
+	let s:old_pattern = ""
 	let s:highlight_id = -1
+	let s:timer_id = 0
 
 	" 初期設定
 	let conf = {
