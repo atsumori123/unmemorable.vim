@@ -12,8 +12,11 @@ if exists('g:unmemorable_auto_complete_enable') && g:unmemorable_auto_complete_e
 	call commands#auto_complete()
 endif
 
-if exists('g:unmemorable_osc_yank_enable') && g:unmemorable_osc_yank_enable
-	call commands#osc_yank()
+if exists('g:unmemorable_osc52yank_enable') && g:unmemorable_osc52yank_enable
+	let arg = !exists('g:unmemorable_osc52yank_enable') || !g:unmemorable_osc52yank_enable ? "OFF"
+				\ : !exists('g:unmemorable_osc52yank_cp932') || !g:unmemorable_osc52yank_cp932 ? "ON"
+				\ : "ON (cp932)"
+	call commands#osc52yank(arg)
 endif
 
 let &cpoptions = s:save_cpo

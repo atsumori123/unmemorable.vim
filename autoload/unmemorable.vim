@@ -10,7 +10,7 @@ function! s:make_menu_table() abort
 		\	{'label': '- Read Only  ['.(&readonly ? 'RO' : 'RW').']', 'action': function('commands#rw')},
 		\	{'label': '- Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']', 'action': function('commands#ignorecase')},
 		\	{'label': '- Visualization control code  ['.(&list ? 'ON' : 'OFF').']', 'action': function('commands#visualization')},
-		\	{'label': '- OSC Yank  ['.(exists("#OSCYank#TextYankPost") ? 'ON' : 'OFF').']', 'action': function('commands#osc_yank')},
+		\	{'label': '- OSC52Yank ['.commands#get_osc52yank().'] {%}', 'action': function('commands#osc52yank'), 'param':['OFF', 'ON', 'ON (cp932)']},
 		\	{'label': '- Reset error format (Quickfix)', 'action': function('commands#reset_errorformat')},
 		\	{'label': '- Remove comment line (Quickfix)', 'action': function('commands#remove_comment_line')},
 		\	{'label': '- Space to Tab', 'action': function('commands#space2tab'), 'arg':'range'},

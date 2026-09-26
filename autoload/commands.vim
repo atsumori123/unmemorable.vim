@@ -11,22 +11,32 @@ function! commands#init(config) abort
 endfunction
 
 "-------------------------------------------------------
-" OSC Yank
+" OSC52 Yank
 "-------------------------------------------------------
-function! commands#osc_yank() abort
-	if exists("#OSCYank#TextYankPost")
-		augroup OSCYank
-			autocmd!
-		augroup END
+function! commands#osc52yank(arg) abort
+	if a:arg =~# "ON"
+		if !exists("#OSC52Yank#TextYankPost")
+			augroup OSC52Yank
+				autocmd!
+				autocmd TextYankPost * call s:osc52yank()
+			augroup END
+		endif
+		let s:osc52yank_cp932 = a:arg =~# "cp932" ? 1 : 0
 	else
-		augroup OSCYank
+		augroup OSC52Yank
 			autocmd!
-			autocmd TextYankPost *
-				\ if v:event.operator is 'y' && v:event.regname is '' |
-				\ execute 'OSCYankRegister "' |
-				\ endif
 		augroup END
+		let s:osc52yank_cp932 = 0
 	endif
+endfunction
+
+"-------------------------------------------------------
+" Get OSC52 yank config
+"-------------------------------------------------------
+function! commands#get_osc52yank() abort
+	return !exists("#OSC52Yank#TextYankPost") ? "OFF" 
+				\ : exists('s:osc52yank_cp932') && s:osc52yank_cp932 ? "ON (cp932)"
+				\ : "ON"
 endfunction
 
 "-------------------------------------------------------
@@ -129,11 +139,12 @@ endfunction
 function! commands#filepath_to_clipboard() abort
 	let sep = (has('win32') || has('win64')) && !&shellslash ? '\' : "/"
 	let parts = split(expand("%:p"), sep)
-	let @* = join(parts[s:omit_num:], sep)
-	if exists("#OSCYank#TextYankPost")
-		execute 'OSCYankRegister *'
+"	let @* = join(parts[s:omit_num:], sep)
+	let @0 = join(parts[s:omit_num:], sep)
+	if exists("#OSC52Yank#TextYankPost")
+		call s:osc52yank(@0)
 	endif
-	echohl MoreMsg | echomsg '[To clipboard] '.@* | echohl None
+	echohl MoreMsg | echomsg '[To clipboard] '.@0 | echohl None
 endfunction
 
 "-------------------------------------------------------
@@ -294,6 +305,45 @@ function! s:auto_cmp_close() abort
 	" 最低文字数に満たなければ`<c-x><c-z>`で補完を終了する
 	if strchars(prev_str) < s:MINIMUM_COMPLETE_LENGTH
 		call feedkeys("\<c-x>\<c-z>", 'ni')
+	endif
+endfunction
+
+"-------------------------------------------------------
+" osc52Yank
+"-------------------------------------------------------
+function! s:osc52yank(...) abort
+	if a:0 == 0
+		" ヤンクされたテキストを取得
+		let text = join(v:event.regcontents, "\n")
+		if v:event.regtype ==# 'V'
+			let text .= "\n"
+		endif
+	else
+		let text = a:1
+	endif
+
+	" 長すぎるテキスト（10万文字以上）は無視
+	if len(text) > 100000
+		return
+	endif
+
+	if exists('s:osc52yank_cp932') && s:osc52yank_cp932 == 1
+		" TeraTerm用に utf-8からcp932(Shift_JIS)にエンコード
+		let converted_text = iconv(text, &encoding, 'cp932')
+	else
+		let converted_text = text
+	endif
+
+	" データをBase64にエンコード（WSL/Linuxのbase64コマンドを使用）
+	let b64 = trim(system('echo -n ' . shellescape(converted_text) . ' | base64 | tr -d "\n"'))
+
+	" OSC 52 シーケンスを組み立てて出力
+	let osc = "\<Esc>]52;c;" . b64 . "\x07"
+
+	if exists('*echoraw')
+		call echoraw(osc)
+	else
+		call system('printf ' . shellescape(osc) . ' > /dev/tty')
 	endif
 endfunction
 
