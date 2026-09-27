@@ -139,12 +139,19 @@ endfunction
 function! commands#filepath_to_clipboard() abort
 	let sep = (has('win32') || has('win64')) && !&shellslash ? '\' : "/"
 	let parts = split(expand("%:p"), sep)
-"	let @* = join(parts[s:omit_num:], sep)
-	let @0 = join(parts[s:omit_num:], sep)
-	if exists("#OSC52Yank#TextYankPost")
-		call s:osc52yank(@0)
+	let path = join(parts[s:omit_num:], sep)
+
+	if  has('clipboard') 
+		let @* = path
+	else
+		let @0 = path
 	endif
-	echohl MoreMsg | echomsg '[To clipboard] '.@0 | echohl None
+
+	if exists("#OSC52Yank#TextYankPost")
+		call s:osc52yank(path)
+	endif
+
+	echohl MoreMsg | echomsg "[To clipboard] " . path | echohl None
 endfunction
 
 "-------------------------------------------------------
