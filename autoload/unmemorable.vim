@@ -10,7 +10,7 @@ function! s:make_menu_table() abort
 		\	{'label': '- Read Only  ['.(&readonly ? 'RO' : 'RW').']', 'action': function('commands#rw')},
 		\	{'label': '- Ignore case  ['.(&ignorecase ? 'ON' : 'OFF').']', 'action': function('commands#ignorecase')},
 		\	{'label': '- Visualization control code  ['.(&list ? 'ON' : 'OFF').']', 'action': function('commands#visualization')},
-		\	{'label': '- OSC52Yank ['.commands#get_osc52yank().'] {%}', 'action': function('commands#osc52yank'), 'param':['OFF', 'ON', 'ON (cp932)']},
+		\	{'label': '- OSC52 Yank  [{%}]', 'action': function('commands#osc52yank'), 'param': ["OFF", "ON", "ON(cp932)"], 'param_idx': function('commands#get_osc52yank_mode')},
 		\	{'label': '- Reset error format (Quickfix)', 'action': function('commands#reset_errorformat')},
 		\	{'label': '- Remove comment line (Quickfix)', 'action': function('commands#remove_comment_line')},
 		\	{'label': '- Space to Tab', 'action': function('commands#space2tab'), 'arg':'range'},
@@ -31,6 +31,11 @@ function! s:make_menu()
 	let lines = []
 	for item in s:MENU
 		if has_key(item, 'param')
+			if has_key(item, 'param_idx')
+				let idx = type(item.param_idx) == v:t_func ? item.param_idx() : item.param_idx
+				let item.param = slice(item.param, idx) + slice(item.param, 0, idx)
+			endif
+
 			let v = type(item.param) == v:t_func ? item.param(0) : type(item.param) == v:t_list ? item.param[0] : item.param
 			let item.label = substitute(item.label, '{\zs[^}]*\ze}', v, '')
 		endif
@@ -71,7 +76,7 @@ function! s:change_param(win, direction) abort
 
 	elseif type(item.param) == v:t_list	" リスト
 		" パラメータが選択項目の場合
-		if a:direction > 1	" 次の要素
+		if a:direction >= 1	" 次の要素
 			call add(item.param, remove(item.param, 0))
 		else				" 前の要素
 			call insert(item.param, remove(item.param, -1), 0)

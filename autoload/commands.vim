@@ -14,29 +14,29 @@ endfunction
 " OSC52 Yank
 "-------------------------------------------------------
 function! commands#osc52yank(arg) abort
-	if a:arg =~# "ON"
-		if !exists("#OSC52Yank#TextYankPost")
+	if a:arg =~# "OFF"
+		if exists("#OSC52Yank#TextYankPost") != 0
+			augroup OSC52Yank
+				autocmd!
+			augroup END
+		endif
+		let s:current_osc52yank = 0
+	else
+		if exists("#OSC52Yank#TextYankPost") == 0
 			augroup OSC52Yank
 				autocmd!
 				autocmd TextYankPost * call s:osc52yank()
 			augroup END
 		endif
-		let s:osc52yank_cp932 = a:arg =~# "cp932" ? 1 : 0
-	else
-		augroup OSC52Yank
-			autocmd!
-		augroup END
-		let s:osc52yank_cp932 = 0
+		let s:current_osc52yank = a:arg =~# "cp932" ? 2 : 1
 	endif
 endfunction
 
 "-------------------------------------------------------
 " Get OSC52 yank config
 "-------------------------------------------------------
-function! commands#get_osc52yank() abort
-	return !exists("#OSC52Yank#TextYankPost") ? "OFF" 
-				\ : exists('s:osc52yank_cp932') && s:osc52yank_cp932 ? "ON (cp932)"
-				\ : "ON"
+function! commands#get_osc52yank_mode() abort
+	return get(s:, 'current_osc52yank', 0)
 endfunction
 
 "-------------------------------------------------------
@@ -334,7 +334,7 @@ function! s:osc52yank(...) abort
 		return
 	endif
 
-	if exists('s:osc52yank_cp932') && s:osc52yank_cp932 == 1
+	if s:current_osc52yank == 2
 		" TeraTerm用に utf-8からcp932(Shift_JIS)にエンコード
 		let converted_text = iconv(text, &encoding, 'cp932')
 	else

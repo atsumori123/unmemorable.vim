@@ -8,15 +8,12 @@ set cpoptions&vim
 
 command! -nargs=0 -range Unmemorable call unmemorable#start(<range>, <line1>, <line2>)
 
-if exists('g:unmemorable_auto_complete_enable') && g:unmemorable_auto_complete_enable
+if get(g:, 'unmemorable_auto_complete_enable', 0)
 	call commands#auto_complete()
 endif
 
-if exists('g:unmemorable_osc52yank_enable') && g:unmemorable_osc52yank_enable
-	let arg = !exists('g:unmemorable_osc52yank_enable') || !g:unmemorable_osc52yank_enable ? "OFF"
-				\ : !exists('g:unmemorable_osc52yank_cp932') || !g:unmemorable_osc52yank_cp932 ? "ON"
-				\ : "ON (cp932)"
-	call commands#osc52yank(arg)
+if get(g:, 'unmemorable_osc52yank', 0)
+	call commands#osc52yank(get(["OFF", "ON", "ON(cp932)"], g:unmemorable_osc52yank, "OFF"))
 endif
 
 let &cpoptions = s:save_cpo
