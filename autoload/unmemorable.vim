@@ -260,10 +260,24 @@ function! s:open_popup() abort
 	setlocal bufhidden=wipe
 	setlocal noswapfile
 	setlocal nowrap
-	setlocal cursorline
 
-	" フォーカスが外れたら自動で閉じる(winid=0(現在のウィンドウ), force=1)
-	autocmd WinLeave <buffer> ++once call nvim_win_close(0, 1)
+	" カーソル行の背景色を変えて行全体で選択しているように見せる
+	highlight FloatCursorLine guibg=#5B6389 ctermbg=DarkBlue
+	call nvim_win_set_option(0, 'cursorline', v:true)
+	call nvim_win_set_option(0, 'winhighlight', 'CursorLine:FloatCursorLine')
+
+	" カーソルボックスを消す。すべてのモード (a) でカーソル文字を非表示
+	" （ブロックのブレンド率を100にして透明化）にする
+	let s:save_guicursor = &guicursor
+	set guicursor=a:Cursor/lCursor-blinkon0
+	highlight Cursor blend=100
+
+	" フォーカスが外れたらフォーカスの形状を戻して
+	" フローティングウィンドウを閉じる(winid=0(現在のウィンドウ), force=1)
+	autocmd WinLeave <buffer> ++once
+				\ execute 'set guicursor=' . s:save_guicursor |
+				\ execute 'nohlsearch' |
+				\ call nvim_win_close(0, 1)
 
 	" []の部分をハイライト
 	call matchadd('Identifier', '\[[^\]]*\]', 10, -1, {'window': win})

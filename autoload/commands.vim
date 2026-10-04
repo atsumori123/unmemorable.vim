@@ -91,7 +91,7 @@ function! commands#reset_errorformat() abort
 
 	if len(bufs) && bufwinnr(bufs[0]) > 0
 		exe bufwinnr(bufs[0]) . 'wincmd w'
-		if !exists('g:GR_GrepCommand') || g:GR_GrepCommand == "internal"
+		if !exists('g:gr_Ggrepprg') || g:gr_Ggrepprg == "internal"
 			execute 'set errorformat=%f\|%l\ col\ \%c-\%k\|\ %m'
 		else
 			execute 'set errorformat=%f\|%l\|\ %m'
