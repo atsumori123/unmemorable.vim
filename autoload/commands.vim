@@ -413,18 +413,37 @@ let s:zenhan = ""
 " commands#ime_auto_off
 "-------------------------------------------------------
 function! commands#ime_auto_off() abort
-	if exists("#IMEAutoOff#InsertLeave")
-		augroup IMEAutoOff
-			autocmd!
-		augroup END
+	if has('xim') || has('multi_byte_ime') || has('global-ime')
+		if substitute(execute('inoremap <ESC>'), '\n', '', 'g') =~# "i"
+			execute 'iunmap <ESC>'
+		else
+			execute 'inoremap <ESC> <ESC>:set iminsert=0<CR>'
+		endif
 	else
-		let s:zenhan = substitute(system("which zenhan.exe"), '\n$', '', '')
-		if filereadable(s:zenhan)
+		if exists("#IMEAutoOff#InsertLeave")
 			augroup IMEAutoOff
 				autocmd!
-				autocmd InsertLeave * call job_start([s:zenhan, '0'])
 			augroup END
+		else
+			let s:zenhan = substitute(system("which zenhan.exe"), '\n$', '', '')
+			if filereadable(s:zenhan)
+				augroup IMEAutoOff
+					autocmd!
+					autocmd InsertLeave * call job_start([s:zenhan, '0'])
+				augroup END
+			endif
 		endif
+	endif
+endfunction
+
+"-------------------------------------------------------
+" commands#get_ime_auto_off_mode
+"-------------------------------------------------------
+function! commands#get_ime_auto_off_mode()
+	if has('xim') || has('multi_byte_ime') || has('global-ime')
+		return substitute(execute('inoremap <ESC>'), '\n', '', 'g') =~# "i"
+	else
+		return exists("#IMEAutoOff#InsertLeave")
 	endif
 endfunction
 

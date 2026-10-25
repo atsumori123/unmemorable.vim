@@ -12,10 +12,6 @@ if get(g:, 'unmemorable_auto_complete_enable', 0)
 	call commands#auto_complete()
 endif
 
-if get(g:, 'unmemorable_ime_auto_off_enable', 0)
-	call commands#ime_auto_off()
-endif
-
 if get(g:, 'unmemorable_osc52yank', 0)
 	call commands#osc52yank(get(["OFF", "ON", "ON(cp932)"], g:unmemorable_osc52yank, "OFF"))
 endif
