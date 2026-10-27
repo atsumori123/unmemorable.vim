@@ -316,52 +316,6 @@ function! s:auto_cmp_close() abort
 endfunction
 
 "-------------------------------------------------------
-" encode_b64
-"-------------------------------------------------------
-function s:encode_b64(str, size) abort
-	let b64_table = [
-				\ 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
-				\ 'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
-				\ 'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
-				\ 'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/']
-
-	let bytes = map(range(len(a:str)), 'char2nr(a:str[v:val])')
-	let b64 = []
-
-	for i in range(0, len(bytes) - 1, 3)
-		let n = bytes[i] * 0x10000
-					\ + get(bytes, i + 1, 0) * 0x100
-					\ + get(bytes, i + 2, 0)
-		call add(b64, b64_table[n / 0x40000])
-		call add(b64, b64_table[n / 0x1000 % 0x40])
-		call add(b64, b64_table[n / 0x40 % 0x40])
-		call add(b64, b64_table[n % 0x40])
-	endfor
-
-	if len(bytes) % 3 == 1
-		let b64[-1] = '='
-		let b64[-2] = '='
-	endif
-
-	if len(bytes) % 3 == 2
-		let b64[-1] = '='
-	endif
-
-	let b64 = join(b64, '')
-	if a:size <= 0
-		return b64
-	endif
-
-	let chunked = ''
-	while strlen(b64) > 0
-		let chunked .= strpart(b64, 0, a:size) . "\n"
-		let b64 = strpart(b64, a:size)
-	endwhile
-
-	return chunked
-endfunction
-
-"-------------------------------------------------------
 " osc52Yank
 "-------------------------------------------------------
 function! s:osc52yank(...) abort
@@ -391,20 +345,16 @@ function! s:osc52yank(...) abort
 		let converted_text = text
 	endif
 
-	let text_b64 = s:encode_b64(converted_text, 0)
-	let osc52 = printf("\x1b]52;c;%s\x07", text_b64)
+	" データをBase64にエンコード（WSL/Linuxのbase64コマンドを使用）
+	let b64 = trim(system('echo -n ' . shellescape(converted_text) . ' | base64 | tr -d "\n"'))
 
-	let success = 0
-	if filewritable('/dev/fd/2') == 1
-		let success = writefile([osc52], '/dev/fd/2', 'b') == 0
-	elseif has('nvim')
-		let success = chansend(v:stderr, osc52) > 0
+	" OSC 52 シーケンスを組み立てて出力
+	let osc = "\<Esc>]52;c;" . b64 . "\x07"
+
+	if exists('*echoraw')
+		call echoraw(osc)
 	else
-		let success = 1 | execute("silent! !echo " . shellescape(osc52)) | redraw!
-	endif
-
-	if !success
-		echohl "ErrorMsg" | echo "Failed to copy selection" | echohl None
+		call system('printf ' . shellescape(osc) . ' > /dev/tty')
 	endif
 endfunction
 
